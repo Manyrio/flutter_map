@@ -80,10 +80,12 @@ class Marker {
   final double width;
   final double height;
   final Anchor anchor;
+  final var more;
 
   Marker({
     this.point,
     this.builder,
+    this.more;
     this.width = 30.0,
     this.height = 30.0,
     AnchorPos anchorPos,
