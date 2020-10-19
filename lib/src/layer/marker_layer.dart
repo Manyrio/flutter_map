@@ -80,7 +80,7 @@ class Marker {
   final double width;
   final double height;
   final Anchor anchor;
-  var more;
+  final Map<String, dynamic> more;
 
   Marker({
     this.point,
