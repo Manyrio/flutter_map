@@ -85,7 +85,7 @@ class Marker {
   Marker({
     this.point,
     this.builder,
-    this.more;
+    this.more,
     this.width = 30.0,
     this.height = 30.0,
     AnchorPos anchorPos,
