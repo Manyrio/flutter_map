@@ -13,6 +13,93 @@ import 'package:flutter_map/src/map/map_state_widget.dart';
 import 'package:latlong/latlong.dart';
 import 'package:positioned_tap_detector/positioned_tap_detector.dart';
 
+class BackgroundLayerOptions extends LayerOptions {
+  final List<Background> overlayImages;
+
+  BackgroundLayerOptions({
+    Key key,
+    this.overlayImages = const [],
+    rebuild,
+  }) : super(key: key, rebuild: rebuild);
+}
+
+class Background {
+  final LatLngBounds bounds;
+  final ImageProvider imageProvider;
+  final double opacity;
+  final bool gaplessPlayback;
+
+  Background({
+    this.bounds,
+    this.imageProvider,
+    this.opacity = 1.0,
+    this.gaplessPlayback = false,
+  });
+}
+
+class BackgroundLayerWidget extends StatelessWidget {
+  final BackgroundLayerOptions options;
+
+  BackgroundLayerWidget({@required this.options}) : super(key: options.key);
+
+  @override
+  Widget build(BuildContext context) {
+    final mapState = MapState.of(context);
+    return BackgroundLayer(options, mapState, mapState.onMoved);
+  }
+}
+
+class BackgroundLayer extends StatelessWidget {
+  final BackgroundLayerOptions overlayImageOpts;
+  final MapState map;
+  final Stream<Null> stream;
+
+  BackgroundLayer(this.overlayImageOpts, this.map, this.stream)
+      : super(key: overlayImageOpts.key);
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<void>(
+      stream: stream,
+      builder: (BuildContext context, _) {
+        return ClipRect(
+          child: Stack(
+            children: <Widget>[
+              for (var overlayImage in overlayImageOpts.overlayImages)
+                _positionedForOverlay(overlayImage),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Positioned _positionedForOverlay(Background overlayImage) {
+    final zoomScale =
+    map.getZoomScale(map.zoom, map.zoom); // TODO replace with 1?
+    final pixelOrigin = map.getPixelOrigin();
+    final upperLeftPixel =
+        map.project(overlayImage.bounds.northWest).multiplyBy(zoomScale) -
+            pixelOrigin;
+    final bottomRightPixel =
+        map.project(overlayImage.bounds.southEast).multiplyBy(zoomScale) -
+            pixelOrigin;
+    return Positioned(
+      left: upperLeftPixel.x.toDouble(),
+      top: upperLeftPixel.y.toDouble(),
+      width: (bottomRightPixel.x - upperLeftPixel.x).toDouble(),
+      height: (bottomRightPixel.y - upperLeftPixel.y).toDouble(),
+      child: Image(
+        image: overlayImage.imageProvider,
+        fit: BoxFit.fill,
+        color: Color.fromRGBO(255, 255, 255, overlayImage.opacity),
+        colorBlendMode: BlendMode.modulate,
+        gaplessPlayback: overlayImage.gaplessPlayback,
+      ),
+    );
+  }
+}
+
 class FlutterMapState extends MapGestureMixin {
   final Key _layerStackKey = GlobalKey();
   final Key _positionedTapDetectorKey = GlobalKey();
@@ -187,6 +274,9 @@ class FlutterMapState extends MapGestureMixin {
     }
     if (options is OverlayImageLayerOptions) {
       return OverlayImageLayer(options, mapState, _merge(options));
+    }
+    if (options is BackgroundLayerOptions) {
+      return BackgroundLayerOptions(options, mapState, _merge(options));
     }
     assert(false, """
 Can't find correct layer for $options. Perhaps when you create your FlutterMap you need something like this:
